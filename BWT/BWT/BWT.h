@@ -6,5 +6,6 @@
 using namespace std;
 
 string BWT_encode(string source);
+string BWT_decode(string encoding);
 
 #endif
