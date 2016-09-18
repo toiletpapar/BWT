@@ -157,7 +157,9 @@ string MTF_decode(vector<int> encoding, forward_list<char> alphabet) {
 	return source;
 }
 
-Binary_File::Binary_File(string filename) : rle_stream(filename, fstream::in | fstream::out | fstream::binary | fstream::trunc), last_op_write(true), write_buffer_cursor(CHAR_BIT - 1), read_buffer_cursor(-1), filename(filename) {
+Binary_File::Binary_File(string filename) : rle_stream(filename, fstream::in | fstream::out | fstream::binary | fstream::trunc), 
+	last_op_write(true), write_buffer_cursor(CHAR_BIT - 1), read_buffer_cursor(-1), filename(filename), is_reading_from_write_buffer(false) {
+
 	this->next_read_pos = this->rle_stream.beg;
 	this->next_write_pos = this->rle_stream.beg;
 }
@@ -166,10 +168,6 @@ Binary_File::~Binary_File() {
 	if (this->rle_stream.is_open()) {
 		this->close();
 	}
-}
-
-int Binary_File::get_offset() {
-	return this->offset;
 }
 
 void Binary_File::write(bool bit) {
@@ -181,6 +179,9 @@ void Binary_File::write(bool bit) {
 	this->last_op_write = true;
 
 	this->write_buffer[this->write_buffer_cursor] = bit;
+	if (this->is_reading_from_write_buffer) {
+		this->read_buffer[this->write_buffer_cursor] = bit;
+	}
 	this->write_buffer_cursor--;
 
 	if (this->write_buffer_cursor == -1) {
@@ -197,14 +198,15 @@ void Binary_File::flush() {
 }
 
 void Binary_File::close() {
-	this->offset = this->write_buffer_cursor + 1;
+	if (this->write_buffer_cursor != CHAR_BIT - 1) {
+		//Write 0's to the offset bits
+		for (int i = this->write_buffer_cursor; i >= 0; i--) {
+			this->write_buffer[i] = 0;
+		}
 
-	//Write 0's to the offset bits
-	for (int i = this->write_buffer_cursor; i >= 0; i--) {
-		this->write_buffer[i] = 0;
+		this->flush();
 	}
-
-	this->flush();
+	
 	this->rle_stream.close();
 }
 
@@ -221,22 +223,42 @@ int Binary_File::read() {
 
 	this->last_op_write = false;
 
+	//Update the read buffer appropriately
 	if (this->read_buffer_cursor == -1) {
 		char byte;
-		
+
+		//If we were previously reading from the write buffer then we should skip the next character
+		if (this->is_reading_from_write_buffer) {
+			this->is_reading_from_write_buffer = false;
+			this->rle_stream >> byte;
+		}
+
 		if (!(this->rle_stream >> byte)) {
-			//Try to read from the write buffer
-			//If cannot read from write buffer then return EOF
-			return EOF;	//Stub
+			//Try to load the write buffer into the read buffer if the write buffer has characters
+			if (this->write_buffer_cursor != CHAR_BIT - 1) {
+				this->read_buffer_cursor = CHAR_BIT - 1;
+				this->is_reading_from_write_buffer = true;
+				this->read_buffer = this->write_buffer;
+			}
+			else {
+				return EOF;
+			}
 		}
 		else {
+			this->is_reading_from_write_buffer = false;
 			this->read_buffer_cursor = CHAR_BIT - 1;
 			this->read_buffer = bitset<CHAR_BIT>(byte);
 			this->next_read_pos = this->rle_stream.tellg();
 		}
 	}
-	
-	return this->read_buffer[this->read_buffer_cursor--];
+
+	if (!this->is_reading_from_write_buffer || this->read_buffer_cursor > this->write_buffer_cursor) {
+		//Then we can only read while read_buffer_cursor > write_buffer_cursor
+		return this->read_buffer[this->read_buffer_cursor--];
+	}
+	else {
+		return EOF;
+	}
 }
 
 //index starts from least significant bit and at 0

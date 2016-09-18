@@ -19,7 +19,6 @@ public:
 	Binary_File(string filename);
 	~Binary_File();
 
-	int get_offset();
 	void write(bool bit);
 	int read();				//read the next bit from the binary file, return int to accomodate EOF
 	void close();			//flush the buffer into the stream, write difference between char_bit and the remaining bits in buffer (the offset) as 0's in the least sig bits
@@ -38,7 +37,7 @@ private:
 	int write_buffer_cursor;
 	bitset<CHAR_BIT> read_buffer;
 	int read_buffer_cursor;
-	int offset;				//Since the encoding may necessarily be divisible by a byte I keep track of the offset of the least significant bits to ignore
+	bool is_reading_from_write_buffer;
 
 	void flush();
 };
