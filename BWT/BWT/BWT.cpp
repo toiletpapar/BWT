@@ -198,6 +198,11 @@ void Binary_File::flush() {
 }
 
 void Binary_File::close() {
+	if (!this->last_op_write) {
+		//Call a file positioning function to the end of the stream
+		this->rle_stream.seekp(this->next_write_pos);
+	}
+
 	if (this->write_buffer_cursor != CHAR_BIT - 1) {
 		//Write 0's to the offset bits
 		for (int i = this->write_buffer_cursor; i >= 0; i--) {

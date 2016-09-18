@@ -44,8 +44,6 @@ int main() {
 
 	RLE_encoding.close();
 
-	cout << '\n' << RLE_encoding.get_offset() << endl;
-
 	/*
 	vector<int> RLE_decoding = RLE_decode(RLE_encoding);
 
