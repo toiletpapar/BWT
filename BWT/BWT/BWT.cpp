@@ -157,42 +157,86 @@ string MTF_decode(vector<int> encoding, forward_list<char> alphabet) {
 	return source;
 }
 
-RLE_encoding::RLE_encoding() : buffer_cursor(CHAR_BIT * sizeof(int) - 1) {
-
+Binary_File::Binary_File(string filename) : rle_stream(filename, fstream::in | fstream::out | fstream::binary | fstream::trunc), last_op_write(true), write_buffer_cursor(CHAR_BIT - 1), read_buffer_cursor(-1), filename(filename) {
+	this->next_read_pos = this->rle_stream.beg;
+	this->next_write_pos = this->rle_stream.beg;
 }
 
-RLE_encoding::~RLE_encoding() {
-
+Binary_File::~Binary_File() {
+	if (this->rle_stream.is_open()) {
+		this->close();
+	}
 }
 
-int RLE_encoding::get_offset() {
+int Binary_File::get_offset() {
 	return this->offset;
 }
 
-void RLE_encoding::write(bool bit) {
-	this->buffer[this->buffer_cursor] = bit;
-	this->buffer_cursor--;
+void Binary_File::write(bool bit) {
+	if (!this->last_op_write) {
+		//Call a file positioning function to the end of the stream
+		this->rle_stream.seekp(this->next_write_pos);
+	}
 
-	if (this->buffer_cursor == -1) {
+	this->last_op_write = true;
+
+	this->write_buffer[this->write_buffer_cursor] = bit;
+	this->write_buffer_cursor--;
+
+	if (this->write_buffer_cursor == -1) {
 		this->flush();
-		this->buffer_cursor = CHAR_BIT * sizeof(int) - 1;
+		this->next_write_pos = this->rle_stream.tellp();
 	}
 }
 
-void RLE_encoding::flush() {
-	this->rle_stream << this->buffer;
-	cout << this->buffer;
+void Binary_File::flush() {
+	this->rle_stream << static_cast<char>(this->write_buffer.to_ulong());
+	this->write_buffer_cursor = CHAR_BIT - 1;
+
+	cout << this->write_buffer << '\n';
 }
 
-void RLE_encoding::close() {
-	this->offset = this->buffer_cursor + 1;
+void Binary_File::close() {
+	this->offset = this->write_buffer_cursor + 1;
 
 	//Write 0's to the offset bits
-	for (int i = this->buffer_cursor; i >= 0; i--) {
-		this->buffer[i] = 0;
+	for (int i = this->write_buffer_cursor; i >= 0; i--) {
+		this->write_buffer[i] = 0;
 	}
 
 	this->flush();
+	this->rle_stream.close();
+}
+
+int Binary_File::read() {
+	//Open the file if it is not open
+	if (!this->rle_stream.is_open()) {
+		this->rle_stream.open(this->filename, fstream::in | fstream::out | fstream::binary | fstream::trunc);
+	}
+
+	if (this->last_op_write) {
+		//Read from the last read position
+		this->rle_stream.seekg(this->next_read_pos);
+	}
+
+	this->last_op_write = false;
+
+	if (this->read_buffer_cursor == -1) {
+		char byte;
+		
+		if (!(this->rle_stream >> byte)) {
+			//Try to read from the write buffer
+			//If cannot read from write buffer then return EOF
+			return EOF;	//Stub
+		}
+		else {
+			this->read_buffer_cursor = CHAR_BIT - 1;
+			this->read_buffer = bitset<CHAR_BIT>(byte);
+			this->next_read_pos = this->rle_stream.tellg();
+		}
+	}
+	
+	return this->read_buffer[this->read_buffer_cursor--];
 }
 
 //index starts from least significant bit and at 0
@@ -205,9 +249,7 @@ const int SIG_BIT_INDEX = CHAR_BIT * sizeof(int) - 1;
 
 //Run-length encoding
 //Encode bit length of runs as 0's
-void RLE_encode(RLE_encoding& encoding, vector<int> source) {
-	bool test = read_bit(0x7fffffff, SIG_BIT_INDEX);
-
+void RLE_encode(Binary_File& encoding, vector<int> source) {
 	if (!source.empty()) {
 		bool running_bit = read_bit(source.at(0), SIG_BIT_INDEX);
 
@@ -238,7 +280,7 @@ void RLE_encode(RLE_encoding& encoding, vector<int> source) {
 				//Case 2, 3 (Encode y)
 				if (running_bit != bit_read || (source_it == --source.end() && i == 0)) {
 					//Encode the bit length of the run [(floor(lg(k)) + 1] minus one since the run contains at least one bit
-					int binary_length = floor(log2(count_running_bit));
+					int binary_length = static_cast<int>(floor(log2(count_running_bit)));
 
 					for (int i = 0; i < binary_length; i++) {
 						encoding.write(0);
@@ -276,8 +318,60 @@ void RLE_encode(RLE_encoding& encoding, vector<int> source) {
 	}
 }
 
-vector<int> RLE_decode(RLE_encoding& encoding) {
+vector<int> RLE_decode(Binary_File& encoding) {
+	vector<int> decoding;
+	bitset<CHAR_BIT * sizeof(int)> buffer;
+	int buffer_position = CHAR_BIT * sizeof(int) - 1;	//Next position in the buffer to write to
 
+	int read_bit = encoding.read();
 
-	return vector<int>();
+	if (read_bit != EOF) {
+		//The first bit is the bit the decoding starts with
+		bool running_bit = static_cast<bool>(read_bit);
+
+		while (read_bit != EOF) {
+			//The length + 1 of the next run of 0's is the length of the binary representation of the length of the running bit
+			int binary_length = 0;
+			do {
+				binary_length++;
+				read_bit = encoding.read();
+			} while (read_bit != EOF && !static_cast<bool>(read_bit));
+
+			//If we encountered EOF at the stage then terminate since the encoding alg would write 0's to fill the encoding until it reached a multiple of bits in int
+			if (read_bit == EOF) {
+				return decoding;
+			}
+
+			//Read the next length + 1 bits and put the length of the running bit into the buffer
+			int run_length = 0;
+			for (int x = binary_length - 1; x >= 0; x--) {
+				//We account for the set bit that we read during the determination of the binary length by going straight to the decoding without reading
+				if (x != binary_length - 1) {
+					read_bit = encoding.read();
+				}
+				
+				if (x == binary_length - 1 || (read_bit != EOF && static_cast<bool>(read_bit))) {
+					for (double y = 0; y < exp2(x); y++) {
+						buffer[buffer_position] = running_bit;
+						buffer_position--;
+
+						//If our buffer reaches the size of an int then write it to the decoding and reset the buffer
+						if (buffer_position == -1) {
+							buffer_position = CHAR_BIT * sizeof(int) - 1;
+							decoding.push_back(static_cast<int>(buffer.to_ulong()));
+						}
+					}
+				}
+				else if (read_bit == EOF) {
+					//Something went horribly wrong with the file
+					cout << "BOOM";
+					return vector<int>();
+				}
+			}
+
+			running_bit = !running_bit;
+		}
+	}
+
+	return decoding;
 }

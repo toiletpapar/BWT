@@ -5,6 +5,8 @@
 #include <vector>
 #include <forward_list>
 
+#include <sstream>
+
 using namespace std;
 
 int main() {
@@ -30,19 +32,29 @@ int main() {
 
 	cout << '\n';
 
-	RLE_encoding RLE_code;
-	RLE_encode(RLE_code, MTF_encoding);
-	RLE_code.close();
+	Binary_File& RLE_encoding = Binary_File("test");
+	RLE_encode(RLE_encoding, MTF_encoding);
 
-	cout << '\n' << RLE_code.get_offset() << endl;
+	bitset<64> my_bits;
+	for (int i = 63; i >= 0; i--) {
+		my_bits[i] = RLE_encoding.read();
+	}
 
-	vector<int> RLE_decoding = RLE_decode(RLE_code);
+	cout << "These are my bits: " << my_bits << "\n";
+
+	RLE_encoding.close();
+
+	cout << '\n' << RLE_encoding.get_offset() << endl;
+
+	/*
+	vector<int> RLE_decoding = RLE_decode(RLE_encoding);
 
 	for (vector<int>::iterator it = RLE_decoding.begin(); RLE_decoding.end() != it; it++) {
 		cout << *it << " ";
 	}
 
 	cout << '\n';
+	*/
 
 	/*
 	string MTF_decoding = MTF_decode(RLE_decoding, alphabet);
@@ -53,5 +65,6 @@ int main() {
 
 	cout << source << endl;
 	*/
+
 	return 0;
 }
