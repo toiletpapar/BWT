@@ -27,6 +27,7 @@ int main() {
 	vector<int> MTF_encoding = MTF_encode(encoding, alphabet);
 
 	for (vector<int>::iterator it = MTF_encoding.begin(); MTF_encoding.end() != it; it++) {
+		//cout << bitset<CHAR_BIT * sizeof(int)>(*it) << "\n";
 		cout << *it << " ";
 	}
 
@@ -35,16 +36,8 @@ int main() {
 	Binary_File& RLE_encoding = Binary_File("test");
 	RLE_encode(RLE_encoding, MTF_encoding);
 
-	bitset<64> my_bits;
-	for (int i = 63; i >= 0; i--) {
-		my_bits[i] = RLE_encoding.read();
-	}
+	cout << "Decoding" << endl;
 
-	cout << "These are my bits: " << my_bits << "\n";
-
-	RLE_encoding.close();
-
-	/*
 	vector<int> RLE_decoding = RLE_decode(RLE_encoding);
 
 	for (vector<int>::iterator it = RLE_decoding.begin(); RLE_decoding.end() != it; it++) {
@@ -52,9 +45,9 @@ int main() {
 	}
 
 	cout << '\n';
-	*/
 
-	/*
+	RLE_encoding.close();
+
 	string MTF_decoding = MTF_decode(RLE_decoding, alphabet);
 
 	cout << MTF_decoding << '\n';
@@ -62,7 +55,6 @@ int main() {
 	string source = BWT_decode(MTF_decoding);
 
 	cout << source << endl;
-	*/
 
 	return 0;
 }
