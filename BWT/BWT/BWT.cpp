@@ -8,12 +8,38 @@
 #include <forward_list>
 #include <vector>
 
+//Next Steps: Tests and Exception Handling
 //This implementation can be improved by using suffix tries for sorting
 //This implementation currently doesn't handle special characters like ' and " and – very well.
 using namespace std;
 
 //This implementation assumes the $ as the special EOT character that does not appear in the source text.
 const char EOT_CHAR = '$';
+
+//Convenience for boilerplate
+void compress(string source, string filename) {
+	forward_list<char> alphabet;
+	for (char i = 32; i <= 126; i++) {
+		//' ' to '~'
+		alphabet.push_front(i);
+	}
+
+	Binary_File& binary_file = Binary_File(filename, fstream::out | fstream::trunc);
+
+	RLE_encode(binary_file, MTF_encode(BWT_encode(source), alphabet));
+}
+
+string decompress(string filename) {
+	forward_list<char> alphabet;
+	for (char i = 32; i <= 126; i++) {
+		//' ' to '~'
+		alphabet.push_front(i);
+	}
+
+	Binary_File& binary_file = Binary_File(filename, fstream::in);
+
+	return BWT_decode(MTF_decode(RLE_decode(binary_file), alphabet));
+}
 
 //Do a cyclic shift on the source text
 //For s[0..n-1] return the concatenation of s[i+1..n-1] and s[0..i] where i is the distance
@@ -52,6 +78,10 @@ bool comp_tuples(pair<char, int> a, pair<char, int> b) {
 }
 
 string BWT_decode(string encoding) {
+	if (encoding.empty()) {
+		return "";
+	}
+
 	int j;
 
 	//Put the encoded characters in tuples (c[i], i)
@@ -281,7 +311,7 @@ vector<int> RLE_decode(Binary_File& encoding) {
 				}
 				else if (read_bit == EOF) {
 					//Something went horribly wrong with the file
-					cout << "BOOM";
+					cout << "File was not RLE appropriate";
 					return vector<int>();
 				}
 			}

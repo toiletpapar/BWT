@@ -18,4 +18,7 @@ string MTF_decode(vector<int> encoding, forward_list<char> alphabet);
 void RLE_encode(Binary_File& encoding, vector<int> source);
 vector<int> RLE_decode(Binary_File& encoding);
 
+void compress(string source, string filename);
+string decompress(string filename);
+
 #endif

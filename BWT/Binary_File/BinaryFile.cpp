@@ -6,11 +6,12 @@
 
 using namespace std;
 
-Binary_File::Binary_File(string filename) : rle_stream(filename, fstream::in | fstream::out | fstream::binary),
+Binary_File::Binary_File(string filename, ios_base::openmode mode) : rle_stream(filename, mode | fstream::binary),
 last_op_write(true), write_buffer_cursor(CHAR_BIT - 1), read_buffer_cursor(-1), filename(filename), is_reading_from_write_buffer(false) {
 
 	this->next_read_pos = this->rle_stream.beg;
 	this->next_write_pos = this->rle_stream.beg;
+	this->max_read_write_buffer_cursor = this->write_buffer_cursor;
 }
 
 Binary_File::~Binary_File() {
@@ -41,6 +42,7 @@ void Binary_File::write(bool bit) {
 	this->write_buffer[this->write_buffer_cursor] = bit;
 	if (this->is_reading_from_write_buffer) {
 		this->read_buffer[this->write_buffer_cursor] = bit;
+		this->max_read_write_buffer_cursor--;
 	}
 	this->write_buffer_cursor--;
 
@@ -108,6 +110,7 @@ int Binary_File::read() {
 				this->read_buffer_cursor = CHAR_BIT - 1;
 				this->is_reading_from_write_buffer = true;
 				this->read_buffer = this->write_buffer;
+				this->max_read_write_buffer_cursor = this->write_buffer_cursor;
 			}
 			else {
 				return EOF;
@@ -122,8 +125,8 @@ int Binary_File::read() {
 		}
 	}
 
-	if (!this->is_reading_from_write_buffer || this->read_buffer_cursor > this->write_buffer_cursor) {
-		//Then we can only read while read_buffer_cursor > write_buffer_cursor
+	if (!this->is_reading_from_write_buffer || this->read_buffer_cursor > this->max_read_write_buffer_cursor) {
+		//Then we can only read while read_buffer_cursor > max_read_write_buffer_cursor
 		return this->read_buffer[this->read_buffer_cursor--];
 	}
 	else {

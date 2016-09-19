@@ -9,7 +9,7 @@ using namespace std;
 
 class Binary_File {
 public:
-	Binary_File(string filename);
+	Binary_File(string filename, ios_base::openmode mode);
 	~Binary_File();
 
 	void write(bool bit);
@@ -31,6 +31,7 @@ private:
 	bitset<CHAR_BIT> read_buffer;
 	int read_buffer_cursor;
 	bool is_reading_from_write_buffer;
+	int max_read_write_buffer_cursor;	//When reading from the write buffer, this is the smallest valid index
 
 	void flush();
 	void initialize();
