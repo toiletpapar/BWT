@@ -311,7 +311,7 @@ vector<int> RLE_decode(Binary_File& encoding) {
 				}
 				else if (read_bit == EOF) {
 					//Something went horribly wrong with the file
-					cout << "File was not RLE appropriate";
+					cerr << "File was not RLE appropriate\n";
 					return vector<int>();
 				}
 			}

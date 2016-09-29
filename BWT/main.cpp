@@ -12,8 +12,8 @@ using namespace std;
 int main() {
 	cout << "==Encoding==\n";
 
-	string message = "Hello World! My name is Tyler and I have a compression algorithm here!";
-
+	string message = "In the late 1970s and early 1980s, the developed countries of North America and Western Europe suffered economically in the face of stiff competition from Japan's ability to produce high-quality goods at competitive costs. For the first time since the start of the Industrial Revolution, the United Kingdom became a net importer of finished goods. The United States undertook its own soul-searching, expressed most pointedly in the television broadcast of If Japan Can... Why can't We? Firms began reexamining the techniques of quality control invented over the past 50 years and how those techniques had been so successfully employed by the Japanese. It was in the midst of this economic turmoil that TQM took root.";
+	//string message = "Alice is the best!";
 	int uncompressed_size = message.length() * CHAR_BIT;
 
 	cout << "Message: " << message << '\n';
@@ -51,7 +51,7 @@ int main() {
 
 	RLE_encoding.close();
 
-	cout << "\n ==Decoding== \n";
+	cout << "\n\n==Decoding== \n";
 	vector<int> RLE_decoding = RLE_decode(RLE_encoding);
 
 	cout << "RLE Decoding: ";
@@ -69,11 +69,35 @@ int main() {
 
 	cout << "BWT Decoding: " << source << '\n';
 
-	cout << "Space Savings: " << 1 - (compressed_size / uncompressed_size)  << '\n';
+	cout << "\nSpace Savings: " << 1 - (compressed_size / uncompressed_size)  << '\n';
 
-	cout << "Convenience Method Test:\n";
+	cout << "\n==Convenience Method Test==\n";
 	compress("Convenience is King!", "test2");
 	cout << decompress("test2") << endl;
+
+	/*
+	//Binary File Test
+	Binary_File& test = Binary_File("test3", fstream::in | fstream::out | fstream::trunc);
+	cout << "Binary File Test" << endl;
+	test.write(1); //1
+	test.write(1); //11
+	test.write(0); //110
+	cout << test.read();
+	test.write(0); //1100
+	test.write(1); //11001
+	test.write(0); //110010
+	cout << test.read();
+	test.write(1); //1100101
+	test.write(0); //11001010
+	test.write(0);
+	test.write(0);
+	cout << test.read();
+	test.write(1);
+	test.write(1);
+	cout << test.read();
+
+	test.close();
+	*/
 
 	return 0;
 }

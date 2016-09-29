@@ -32,15 +32,13 @@ void Binary_File::initialize() {
 }
 
 void Binary_File::write(bool bit) {
-	if (!this->last_op_write) {
+	if (!this->last_op_write && !this->rle_stream.eof()) {
 		//Call a file positioning function to the end of the stream
 		this->rle_stream.seekp(this->next_write_pos);
 	}
 
-	this->last_op_write = true;
-
 	this->write_buffer[this->write_buffer_cursor] = bit;
-	if (this->is_reading_from_write_buffer) {
+	if (this->is_reading_from_write_buffer && this->max_read_write_buffer_cursor != -1) {
 		this->read_buffer[this->write_buffer_cursor] = bit;
 		this->max_read_write_buffer_cursor--;
 	}
@@ -53,7 +51,9 @@ void Binary_File::write(bool bit) {
 }
 
 void Binary_File::flush() {
+	this->rle_stream.clear();
 	this->rle_stream << static_cast<char>(this->write_buffer.to_ulong());
+	this->last_op_write = true;
 	this->write_buffer_cursor = CHAR_BIT - 1;
 
 	//cout << this->write_buffer << '\n';
@@ -86,14 +86,14 @@ int Binary_File::read() {
 
 	if (this->last_op_write) {
 		//Read from the last read position
+		this->last_op_write = false;
 		this->rle_stream.seekg(this->next_read_pos);
 	}
-
-	this->last_op_write = false;
 
 	//Update the read buffer appropriately
 	if (this->read_buffer_cursor == -1) {
 		int byte;
+		this->last_op_write = false;
 
 		//If we were previously reading from the write buffer then we should skip the next character
 		if (this->is_reading_from_write_buffer) {
@@ -103,7 +103,6 @@ int Binary_File::read() {
 
 		byte = this->rle_stream.get();
 
-		//if (!(this->rle_stream >> byte)) {
 		if (this->rle_stream.eof() || this->rle_stream.fail()) {
 			//Try to load the write buffer into the read buffer if the write buffer has characters
 			if (this->write_buffer_cursor != CHAR_BIT - 1) {
